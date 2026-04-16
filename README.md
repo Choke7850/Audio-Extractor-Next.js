@@ -54,31 +54,6 @@ Set storage paths in your `.env` file:
 
 
 
-example: env file
-
-Server Configuration
-PORT=1234
- --- STORAGE CONFIGURATION ---
-Choose ONE of the following modes:
-
-MODE 1: AUTO-GENERATION (Recommended)
-Provide a base path, and the system will create a unique folder with a 16-character random suffix.
-Example: G:\my_projects
-BASE_STORAGE_PATH=
-
-MODE 2: MANUAL SPECIFICATION (Strict Validation)
-All three variables MUST be defined if BASE_STORAGE_PATH is empty.
-If any are missing, the system will exit with specific error codes.
-Error 1100: UPLOAD_DIR missing
-Error 1101: PROCESSED_DIR missing
-Error 9950: HISTORY_DB_PATH missing
-
-UPLOAD_DIR="G:\server_storage\uploads"
-PROCESSED_DIR="G:\server_storage\processed"
-HISTORY_DB_PATH="G:\server_storage\history.json"
-
-
-
 
 ### 👨‍💻 Credits & Support
 - **Developer:** Chok

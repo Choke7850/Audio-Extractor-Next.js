@@ -46,7 +46,7 @@ This project is built to be easily modified and hosted by anyone:
    npm run build
    npm run start
    ```
-
+   ```bash
 ### 📂 Storage Configuration
 Set storage paths in your `.env` file:
 - **Mode 1 (Auto):** Set `BASE_STORAGE_PATH` (e.g., `G:\my_projects`). The system creates a unique folder automatically.
@@ -56,22 +56,22 @@ Set storage paths in your `.env` file:
 
 example: env file
 
-# Server Configuration
+Server Configuration
 PORT=1234
-# --- STORAGE CONFIGURATION ---
-# Choose ONE of the following modes:
+ --- STORAGE CONFIGURATION ---
+Choose ONE of the following modes:
 
-# MODE 1: AUTO-GENERATION (Recommended)
-# Provide a base path, and the system will create a unique folder with a 16-character random suffix.
-# Example: G:\my_projects
+MODE 1: AUTO-GENERATION (Recommended)
+Provide a base path, and the system will create a unique folder with a 16-character random suffix.
+Example: G:\my_projects
 BASE_STORAGE_PATH=
 
-# MODE 2: MANUAL SPECIFICATION (Strict Validation)
-# All three variables MUST be defined if BASE_STORAGE_PATH is empty.
-# If any are missing, the system will exit with specific error codes.
-# Error 1100: UPLOAD_DIR missing
-# Error 1101: PROCESSED_DIR missing
-# Error 9950: HISTORY_DB_PATH missing
+MODE 2: MANUAL SPECIFICATION (Strict Validation)
+All three variables MUST be defined if BASE_STORAGE_PATH is empty.
+If any are missing, the system will exit with specific error codes.
+Error 1100: UPLOAD_DIR missing
+Error 1101: PROCESSED_DIR missing
+Error 9950: HISTORY_DB_PATH missing
 
 UPLOAD_DIR="G:\server_storage\uploads"
 PROCESSED_DIR="G:\server_storage\processed"
@@ -137,3 +137,4 @@ HISTORY_DB_PATH="G:\server_storage\history.json"
 ### 👨‍💻 เครดิตและการสนับสนุน
 - **พัฒนาโดย:** Chok
 - **ติดต่อสอบถามและสนับสนุน:** [https://support.chokedatacenter.com](https://support.chokedatacenter.com)
+   ```bash

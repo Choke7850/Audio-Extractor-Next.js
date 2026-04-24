@@ -582,7 +582,7 @@ export default function App() {
         </div>
         <div className="hidden md:block text-right text-xs text-white/50 font-mono bg-white/5 px-4 py-2 rounded-xl border border-white/5">
           NEXT.JS & FFMPEG<br/>
-          VER 2.1 (GLASS THEME)
+          VER 2.4.1 (Stability and some errors.)
         </div>
       </header>
 

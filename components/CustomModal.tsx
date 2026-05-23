@@ -8,7 +8,7 @@ interface CustomModalProps {
   onClose: () => void
   onConfirm: () => void
   title: string
-  message: string
+  message: string | React.ReactNode
   confirmText?: string
   cancelText?: string
   variant?: "danger" | "info"
@@ -42,7 +42,7 @@ export function CustomModal({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/90 p-6 shadow-2xl backdrop-blur-xl"
+            className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/90 p-6 shadow-2xl backdrop-blur-xl"
           >
             <div className="flex items-start gap-4">
               <div
@@ -53,9 +53,9 @@ export function CustomModal({
               >
                 <AlertTriangle size={24} />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 w-full min-w-0">
                 <h3 className="text-xl font-semibold text-white">{title}</h3>
-                <p className="mt-2 text-zinc-400 leading-relaxed">{message}</p>
+                <div className="mt-2 text-zinc-400 leading-relaxed font-sans">{message}</div>
               </div>
               <button
                 onClick={onClose}

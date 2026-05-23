@@ -68,7 +68,24 @@ if (BASE_STORAGE_PATH) {
 function loadHistory() {
   if (!fs.existsSync(DB_FILE)) return [];
   try {
-    return JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+    const data = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+    let needsSave = false;
+    data.forEach((item: any) => {
+      let updated = false;
+      if (!item.token || item.token.length !== 64) {
+        item.token = crypto.randomBytes(32).toString('hex');
+        updated = true;
+      }
+      if (!item.token_created_at) {
+        item.token_created_at = new Date().toISOString().replace('T', ' ').substring(0, 19);
+        updated = true;
+      }
+      if (updated) needsSave = true;
+    });
+    if (needsSave) {
+      fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 4), 'utf-8');
+    }
+    return data;
   } catch {
     return [];
   }
@@ -139,7 +156,13 @@ function getBestAudioStreamIndex(filepath: string): number {
 }
 
 async function processVideoTask(tempFilepath: string, originalFilename: string, options: any, fileId: string) {
-  const outputFilename = `${path.parse(originalFilename).name.replace(/[<>:"/\\|?*#%]/g, '')}_${fileId}.wav`;
+  const format = options.format || 'wav';
+  
+  let ext = `.${format}`;
+  if (format === 'alac' || format === 'aac') ext = '.m4a';
+  if (format === 'pcm') ext = '.pcm';
+
+  const outputFilename = `${path.parse(originalFilename).name.replace(/[<>:"/\\|?*#%]/g, '')}_${fileId}${ext}`;
   const outputPath = path.join(PROCESSED_FOLDER, outputFilename);
   
   broadcast({ type: 'EXTRACTION_PROGRESS', fileId, status: 'กำลังวิเคราะห์ไฟล์...' });
@@ -154,9 +177,69 @@ async function processVideoTask(tempFilepath: string, originalFilename: string, 
   const bitDepth = options.bit_depth || '16';
   
   let codec = 'pcm_s16le';
-  if (bitDepth === '8') codec = 'pcm_u8';
-  else if (bitDepth === '24') codec = 'pcm_s24le';
-  else if (bitDepth === '32') codec = 'pcm_s32le';
+  let formatArg = 'wav';
+  let extraArgs: string[] = [];
+
+  switch(format) {
+    case 'wav':
+      formatArg = 'wav';
+      codec = (bitDepth === '8') ? 'pcm_u8' : (bitDepth === '24') ? 'pcm_s24le' : (bitDepth === '32') ? 'pcm_s32le' : 'pcm_s16le';
+      break;
+    case 'aiff':
+      formatArg = 'aiff';
+      codec = (bitDepth === '8') ? 'pcm_s8' : (bitDepth === '24') ? 'pcm_s24be' : (bitDepth === '32') ? 'pcm_s32be' : 'pcm_s16be';
+      break;
+    case 'pcm':
+      formatArg = (bitDepth === '8') ? 'u8' : (bitDepth === '24') ? 's24le' : (bitDepth === '32') ? 's32le' : 's16le';
+      codec = (bitDepth === '8') ? 'pcm_u8' : (bitDepth === '24') ? 'pcm_s24le' : (bitDepth === '32') ? 'pcm_s32le' : 'pcm_s16le';
+      break;
+    case 'flac':
+      formatArg = 'flac';
+      codec = 'flac';
+      if (bitDepth === '24') extraArgs = ['-sample_fmt', 's32']; // flac maps to 24 inside
+      break;
+    case 'alac':
+      formatArg = 'ipod';
+      codec = 'alac';
+      break;
+    case 'ape':
+      formatArg = 'ape';
+      codec = 'ape';
+      break;
+    case 'wv':
+      formatArg = 'wv';
+      codec = 'wavpack';
+      break;
+    case 'mp3':
+      formatArg = 'mp3';
+      codec = 'libmp3lame';
+      extraArgs = ['-b:a', `${options.bitrate || 320}k`];
+      break;
+    case 'aac':
+      formatArg = 'ipod';
+      codec = 'aac';
+      extraArgs = ['-b:a', `${options.bitrate || 320}k`];
+      break;
+    case 'opus':
+      formatArg = 'opus';
+      codec = 'libopus';
+      extraArgs = ['-b:a', `${options.bitrate || 320}k`, '-vbr', 'on'];
+      break;
+    case 'ogg':
+      formatArg = 'ogg';
+      codec = 'libvorbis';
+      extraArgs = ['-b:a', `${options.bitrate || 320}k`];
+      break;
+    case 'wma':
+      formatArg = 'asf';
+      codec = 'wmav2';
+      extraArgs = ['-b:a', `${options.bitrate || 320}k`];
+      break;
+    default:
+      formatArg = 'wav';
+      codec = 'pcm_s16le';
+      break;
+  }
 
   const args = ['-y', '-threads', '0', '-i', tempFilepath, '-vn'];
   
@@ -164,9 +247,11 @@ async function processVideoTask(tempFilepath: string, originalFilename: string, 
     args.push('-map', `0:${bestStreamIdx}`);
   }
 
-  args.push('-acodec', codec, '-ar', '48000', '-ac', targetChannelsStr, '-f', 'wav', outputPath);
+  args.push('-acodec', codec, '-ar', '48000', '-ac', targetChannelsStr);
+  if (extraArgs.length > 0) args.push(...extraArgs);
+  args.push('-f', formatArg, outputPath);
 
-  broadcast({ type: 'EXTRACTION_PROGRESS', fileId, status: 'กำลังแยกเสียง (FFmpeg)...' });
+  broadcast({ type: 'EXTRACTION_PROGRESS', fileId, status: 'กำลังแปลงเสียง (FFmpeg)...' });
 
   const ffmpeg = spawn('ffmpeg', args);
 
@@ -177,6 +262,8 @@ async function processVideoTask(tempFilepath: string, originalFilename: string, 
       const stats = fs.statSync(outputPath);
       const historyEntry = {
         id: fileId,
+        token: crypto.randomBytes(32).toString('hex'),
+        token_created_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
         original_name: originalFilename,
         filename: outputFilename,
         size: stats.size,
@@ -236,6 +323,16 @@ app.prepare().then(() => {
   // API Routes
   expressApp.get('/api/history', (req, res) => {
     res.json(loadHistory());
+  });
+
+  expressApp.get('/api/file/:token', (req, res) => {
+    const history = loadHistory();
+    const file = history.find((item: any) => item.token === req.params.token);
+    if (file) {
+      res.json(file);
+    } else {
+      res.status(404).json({ error: 'File not found' });
+    }
   });
 
   expressApp.get('/api/check_chunks/:file_id', (req, res) => {
@@ -362,11 +459,23 @@ app.prepare().then(() => {
 
       const chunksize = (end - start) + 1;
       const file = fs.createReadStream(filePath, { start, end });
+      const ext = path.extname(filePath).toLowerCase();
+      let contentType = 'audio/wav';
+      if (ext === '.mp3') contentType = 'audio/mpeg';
+      else if (ext === '.flac') contentType = 'audio/flac';
+      else if (ext === '.m4a') contentType = 'audio/mp4';
+      else if (ext === '.ogg' || ext === '.opus') contentType = 'audio/ogg';
+      else if (ext === '.ape') contentType = 'audio/ape';
+      else if (ext === '.wv') contentType = 'audio/wavpack';
+      else if (ext === '.wma') contentType = 'audio/x-ms-wma';
+      else if (ext === '.aiff') contentType = 'audio/aiff';
+      else if (ext === '.pcm') contentType = 'application/octet-stream';
+
       const head = {
         'Content-Range': `bytes ${start}-${end}/${fileSize}`,
         'Accept-Ranges': 'bytes',
         'Content-Length': chunksize,
-        'Content-Type': 'audio/wav',
+        'Content-Type': contentType,
       };
       res.writeHead(206, head);
       file.on('error', (err) => {
@@ -375,9 +484,21 @@ app.prepare().then(() => {
       });
       file.pipe(res);
     } else {
+      const ext = path.extname(filePath).toLowerCase();
+      let contentType = 'audio/wav';
+      if (ext === '.mp3') contentType = 'audio/mpeg';
+      else if (ext === '.flac') contentType = 'audio/flac';
+      else if (ext === '.m4a') contentType = 'audio/mp4';
+      else if (ext === '.ogg' || ext === '.opus') contentType = 'audio/ogg';
+      else if (ext === '.ape') contentType = 'audio/ape';
+      else if (ext === '.wv') contentType = 'audio/wavpack';
+      else if (ext === '.wma') contentType = 'audio/x-ms-wma';
+      else if (ext === '.aiff') contentType = 'audio/aiff';
+      else if (ext === '.pcm') contentType = 'application/octet-stream';
+
       const head = {
         'Content-Length': fileSize,
-        'Content-Type': 'audio/wav',
+        'Content-Type': contentType,
       };
       res.writeHead(200, head);
       const file = fs.createReadStream(filePath);
